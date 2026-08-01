@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Our Universe</title>
+<!-- GitHub Pages-ready build: editable data persists with browser localStorage. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+:root{
+  --bg-deep:#100a1e;
+  --bg-panel:#1c1530;
+  --bg-panel-2:#241c3a;
+  --accent-gold:#d9a441;
+  --accent-gold-soft:#e8c37f;
+  --accent-rose:#e69aa0;
+  --text-cream:#f4ecdd;
+  --text-muted:#b2a6c9;
+  --line:rgba(217,164,65,0.25);
+  --shadow:0 20px 60px rgba(0,0,0,0.45);
+  --radius:18px;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  background:var(--bg-deep);
+  color:var(--text-cream);
+  font-family:'Jost',sans-serif;
+  font-weight:300;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+h1,h2,h3,.display{ font-family:'Cormorant Garamond',serif; font-weight:600; letter-spacing:0.01em; }
+.foil{
+  background:linear-gradient(100deg, var(--accent-gold-soft) 10%, #fff6df 35%, var(--accent-rose) 55%, var(--accent-gold-soft) 80%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  background-size:220% auto; animation:foilShift 7s ease-in-out infinite;
+}
+@keyframes foilShift{ 0%,100%{background-position:0% 50%;} 50%{background-position:100% 50%;} }
+canvas#stars{ position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+.bg-glow{
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 10%, rgba(230,154,160,0.10), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 80%, rgba(217,164,65,0.10), transparent 60%);
+}
+.divider{ text-align:center; color:var(--accent-gold); opacity:0.6; letter-spacing:12px; margin:10px 0 30px; font-size:12px;}
+
+/* premium ambient blobs */
+.blob{ position:fixed; border-radius:50%; filter:blur(100px); opacity:0.28; z-index:0; pointer-events:none;}
+.blob1{ width:440px; height:440px; background:var(--accent-rose); top:-140px; left:-120px;}
+.blob2{ width:400px; height:400px; background:var(--accent-gold); bottom:-160px; right:-110px;}
+.blob3{ width:320px; height:320px; background:#7d5fb0; top:40%; left:50%; opacity:0.16;}
+
+/* entrance names */
+.intro-names{ display:flex; align-items:center; justify-content:center; gap:16px; flex-wrap:wrap; margin-bottom:10px;}
+.intro-names .name{ font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:clamp(19px,3.2vw,30px); }
+.intro-heart{ font-size:20px; color:var(--accent-rose); animation:pulseStar 2.4s ease-in-out infinite; }
+.intro-est{ font-size:11px; letter-spacing:0.28em; text-transform:uppercase; color:var(--text-muted); margin-bottom:26px;}
+
+/* wish modal */
+.wish-modal{ position:fixed; inset:0; z-index:170; background:rgba(8,5,16,0.86); display:none; align-items:center; justify-content:center; padding:24px;}
+.wish-modal.open{ display:flex; }
+.wish-modal-card{ max-width:480px; width:100%; background:linear-gradient(160deg, var(--bg-panel), var(--bg-panel-2)); border:1px solid var(--line); border-radius:22px; padding:44px 38px; text-align:center; position:relative; box-shadow:var(--shadow);}
+.wish-modal-text{ font-family:'Cormorant Garamond',serif; font-size:22px; font-style:italic; color:var(--text-cream); line-height:1.6;}
+
+/* planner quick filters */
+.quick-filters{ display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;}
+.chip{ background:var(--bg-panel); border:1px solid var(--line); color:var(--text-muted); padding:8px 15px; border-radius:999px; font-size:12.5px; cursor:pointer; transition:all .2s ease;}
+.chip:hover{ border-color:var(--accent-gold); color:var(--text-cream); transform:translateY(-2px);}
+
+#confetti{ position:fixed; inset:0; z-index:180; pointer-events:none; }
+
+/* ---------- INTRO SPLASH ---------- */
+#intro{
+  position:fixed; inset:0; z-index:200; background:radial-gradient(ellipse at center, #1c1530, #0c0816 80%);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px;
+  transition:opacity .8s ease, visibility .8s ease;
+}
+#intro.hide{ opacity:0; visibility:hidden; pointer-events:none; }
+#intro .eyebrow{ margin-bottom:14px; }
+#intro h1{ font-size:clamp(30px,6vw,54px); margin:0 0 16px; }
+#intro p{ color:var(--text-muted); max-width:420px; margin:0 auto 32px; line-height:1.7; font-size:15px;}
+
+/* ---------- NAV ---------- */
+nav{
+  position:fixed; top:0; left:0; right:0; z-index:50;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 4vw;
+  background:linear-gradient(to bottom, rgba(16,10,30,0.94), rgba(16,10,30,0));
+  backdrop-filter:blur(2px);
+}
+.brand{
+  font-family:'Cormorant Garamond',serif; font-style:italic; font-size:22px;
+  color:var(--accent-gold-soft); letter-spacing:0.02em; cursor:pointer;
+  display:flex; align-items:center; gap:8px;
+}
+.navlinks{ display:flex; gap:4px; flex-wrap:wrap; background:rgba(28,21,48,0.55); border:1px solid var(--line); border-radius:999px; padding:5px; max-width:66vw;}
+.navlinks button{
+  background:transparent; border:none; cursor:pointer; color:var(--text-muted);
+  font-family:'Jost',sans-serif; font-size:12.5px; letter-spacing:0.02em;
+  padding:8px 14px; border-radius:999px; transition:all .25s ease; white-space:nowrap;
+}
+.navlinks button.active{ background:linear-gradient(135deg, var(--accent-gold), var(--accent-rose)); color:#1c1530; font-weight:500; }
+.navlinks button:hover:not(.active){ color:var(--text-cream); }
+.nav-toggle{ display:none; background:none; border:1px solid var(--line); color:var(--text-cream); width:40px; height:40px; border-radius:10px; cursor:pointer; font-size:18px;}
+@media (max-width:1050px){
+  .navlinks{ position:fixed; top:70px; right:4vw; left:4vw; max-width:none; flex-direction:column; align-items:stretch; display:none; padding:10px; }
+  .navlinks.open{ display:flex; }
+  .navlinks button{ text-align:left; padding:12px 16px; }
+  .nav-toggle{ display:block; }
+}
+
+/* ---------- LAYOUT ---------- */
+main{ position:relative; z-index:1; }
+.view{ display:none; min-height:100vh; padding:120px 6vw 80px; }
+.view.active{ display:block; animation:fadeUp .6s ease; }
+@keyframes fadeUp{ from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);} }
+.eyebrow{ text-transform:uppercase; font-size:12px; letter-spacing:0.28em; color:var(--accent-gold-soft); margin-bottom:10px; font-weight:500; }
+.section-title{ font-size:clamp(32px,5vw,56px); margin:0 0 8px; }
+.section-sub{ color:var(--text-muted); max-width:580px; font-size:15px; line-height:1.7; margin-bottom:40px;}
+
+/* ---------- HOME ---------- */
+#home{ display:flex; flex-direction:column; justify-content:center; min-height:100vh; padding-top:100px;}
+.hero-wrap{ max-width:860px; }
+.hero-title{ font-size:clamp(42px,8vw,84px); line-height:1.05; margin:0 0 18px;}
+.hero-title em{ font-style:italic; }
+.hero-sub{ color:var(--text-muted); font-size:17px; max-width:540px; line-height:1.8; margin-bottom:34px;}
+.hero-actions{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:56px;}
+.btn{ font-family:'Jost',sans-serif; font-size:13.5px; letter-spacing:0.03em; padding:14px 24px; border-radius:999px; cursor:pointer; border:1px solid transparent; transition:transform .2s ease, box-shadow .2s ease; }
+.btn:hover{ transform:translateY(-2px); }
+.btn-primary{ background:linear-gradient(135deg, var(--accent-gold), var(--accent-rose)); color:#1c1530; font-weight:500; box-shadow:0 10px 30px rgba(217,164,65,0.25);}
+.btn-ghost{ background:transparent; color:var(--text-cream); border-color:var(--line); }
+.stat-row{ display:flex; gap:40px; flex-wrap:wrap; margin-bottom:50px;}
+.stat{ min-width:120px; }
+.stat .num{ font-family:'Cormorant Garamond',serif; font-size:40px; color:var(--accent-gold-soft); display:block;}
+.stat .lbl{ font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.15em;}
+.feature-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; max-width:900px;}
+.feature-card{
+  background:var(--bg-panel); border:1px solid var(--line); border-radius:14px; padding:18px;
+  cursor:pointer; transition:transform .2s ease, border-color .2s ease;
+}
+.feature-card:hover{ transform:translateY(-3px); border-color:var(--accent-gold); }
+.feature-card .ico{ font-size:22px; margin-bottom:8px; display:block;}
+.feature-card .t{ font-family:'Cormorant Garamond',serif; font-size:19px; color:var(--accent-gold-soft);}
+.feature-card .d{ font-size:12.5px; color:var(--text-muted); margin-top:4px; line-height:1.5;}
+
+/* wish star */
+.wish-star{
+  position:fixed; bottom:34px; right:34px; z-index:40; width:60px; height:60px; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, var(--accent-gold-soft), var(--accent-rose) 75%);
+  border:none; cursor:pointer; box-shadow:0 0 30px rgba(217,164,65,0.5); font-size:22px; color:#1c1530;
+  animation:pulseStar 3.2s ease-in-out infinite;
+}
+@keyframes pulseStar{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.08);} }
+.wish-hint{ position:fixed; bottom:100px; right:30px; z-index:40; font-size:11px; color:var(--text-muted); background:var(--bg-panel); padding:6px 12px; border-radius:8px; border:1px solid var(--line); opacity:0.9;}
+@media (max-width:600px){ .wish-star{ width:50px; height:50px; bottom:20px; right:20px;} .wish-hint{ display:none; } }
+
+/* ---------- CARDS / PANELS ---------- */
+.panel{ background:linear-gradient(160deg, var(--bg-panel), var(--bg-panel-2)); border:1px solid var(--line); border-radius:var(--radius); padding:28px; box-shadow:var(--shadow); transition:transform .3s ease, box-shadow .3s ease;}
+.panel:hover{ box-shadow:0 26px 70px rgba(0,0,0,0.5); }
+.grid-2{ display:grid; grid-template-columns:1.1fr 0.9fr; gap:28px; }
+@media (max-width:900px){ .grid-2{ grid-template-columns:1fr; } }
+
+/* letters */
+.letter-list{ display:flex; flex-direction:column; gap:16px; }
+.letter-card{ background:var(--bg-panel); border:1px solid var(--line); border-radius:14px; padding:20px 22px; cursor:pointer; transition:border-color .2s ease, transform .2s ease; }
+.letter-card:hover{ border-color:var(--accent-gold); transform:translateX(4px); }
+.letter-card h3{ margin:0 0 4px; font-size:22px; color:var(--accent-gold-soft);}
+.letter-card .meta{ font-size:12px; color:var(--text-muted); letter-spacing:0.06em; text-transform:uppercase;}
+
+/* full page letter reader */
+#letterReader{
+  position:fixed; inset:0; z-index:120; background:radial-gradient(ellipse at top, #241c3a, #0c0816 75%);
+  display:none; align-items:center; justify-content:center; padding:40px 20px;
+}
+#letterReader.open{ display:flex; }
+.reader-page{
+  max-width:640px; width:100%; background:linear-gradient(165deg,#241c3a,#1c1530); border:1px solid var(--line);
+  border-radius:20px; padding:50px 44px; box-shadow:var(--shadow); position:relative; max-height:82vh; overflow:auto;
+}
+.reader-page h2{ margin:0 0 6px; font-size:34px; }
+.reader-page .meta{ color:var(--text-muted); font-size:12px; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:22px;}
+.reader-body{ font-family:'Cormorant Garamond',serif; font-size:20px; line-height:1.9; white-space:pre-wrap; color:var(--text-cream);}
+.reader-nav{ display:flex; justify-content:space-between; align-items:center; margin-top:30px;}
+.reader-close{ position:absolute; top:18px; right:22px; background:none; border:none; color:var(--text-muted); font-size:26px; cursor:pointer;}
+.reader-close:hover{ color:var(--text-cream); }
+
+form label{ display:block; font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.1em; margin:14px 0 6px;}
+form input, form textarea, form select{ width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--line); border-radius:10px; padding:12px 14px; color:var(--text-cream); font-family:'Jost',sans-serif; font-size:14px; }
+form textarea{ resize:vertical; min-height:110px; font-family:'Cormorant Garamond',serif; font-size:17px;}
+form input:focus, form textarea:focus, form select:focus{ outline:2px solid var(--accent-gold); }
+
+/* quotes */
+.quote-stage{ min-height:240px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; }
+.quote-text{ font-family:'Cormorant Garamond',serif; font-style:italic; font-size:clamp(24px,3.4vw,34px); max-width:640px; line-height:1.5; color:var(--text-cream);}
+.quote-text::before{ content:"\201C"; color:var(--accent-gold); }
+.quote-text::after{ content:"\201D"; color:var(--accent-gold); }
+
+/* flirt */
+.flirt-card{ text-align:center; padding:46px 20px; min-height:180px; display:flex; align-items:center; justify-content:center; }
+.flirt-text{ font-family:'Cormorant Garamond',serif; font-size:clamp(22px,3vw,30px); max-width:600px; color:var(--accent-rose);}
+
+/* games */
+.subtabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:26px;}
+.subtabs button{ background:var(--bg-panel); border:1px solid var(--line); color:var(--text-muted); padding:10px 18px; border-radius:999px; cursor:pointer; font-size:13px;}
+.subtabs button.active{ background:linear-gradient(135deg, var(--accent-gold), var(--accent-rose)); color:#1c1530; border-color:transparent; font-weight:500;}
+.game-pane{ display:none; }
+.game-pane.active{ display:block; }
+.mm-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; max-width:460px; margin:20px auto;}
+.mm-card{ aspect-ratio:1; background:var(--bg-panel); border:1px solid var(--line); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:26px; cursor:pointer; user-select:none;}
+.mm-card.flipped, .mm-card.matched{ background:linear-gradient(150deg, var(--accent-gold), var(--accent-rose)); color:#1c1530; }
+.mm-meta{ text-align:center; color:var(--text-muted); font-size:13px; margin-top:10px;}
+.wyr-options{ display:grid; grid-template-columns:1fr auto 1fr; gap:16px; align-items:center; max-width:640px; margin:24px auto;}
+.wyr-btn{ background:var(--bg-panel); border:1px solid var(--line); border-radius:16px; padding:26px 18px; cursor:pointer; text-align:center; font-family:'Cormorant Garamond',serif; font-size:19px; color:var(--text-cream); transition:border-color .2s ease, transform .2s ease;}
+.wyr-btn:hover{ border-color:var(--accent-gold); transform:translateY(-3px);}
+.wyr-or{ font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.2em;}
+.wyr-tally{ text-align:center; color:var(--text-muted); font-size:12px; margin-top:16px;}
+.td-choice{ display:flex; gap:14px; justify-content:center; margin-bottom:22px;}
+.quiz-item{ background:var(--bg-panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin-bottom:14px;}
+.quiz-item .q{ font-family:'Cormorant Garamond',serif; font-size:19px; color:var(--accent-gold-soft); margin-bottom:10px;}
+.quiz-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+@media (max-width:600px){ .quiz-row, .wyr-options{ grid-template-columns:1fr; } .wyr-or{ display:none;} }
+.score-banner{ text-align:center; font-family:'Cormorant Garamond',serif; font-size:22px; color:var(--accent-gold-soft); margin:20px 0;}
+
+/* countdown */
+.count-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:24px 0 8px;}
+.count-box{ background:var(--bg-panel); border:1px solid var(--line); border-radius:14px; padding:22px 8px; text-align:center;}
+.count-box .n{ font-family:'Cormorant Garamond',serif; font-size:44px; color:var(--accent-gold-soft); display:block;}
+.count-box .l{ font-size:11px; text-transform:uppercase; letter-spacing:0.14em; color:var(--text-muted);}
+@media (max-width:600px){ .count-grid{ grid-template-columns:repeat(2,1fr);} }
+.count-card{ margin-bottom:26px; }
+.count-card h3{ margin:0 0 2px; font-size:24px; color:var(--text-cream);}
+.count-card .sub{ font-size:13px; color:var(--text-muted);}
+
+/* bucket list */
+.bucket-item{ display:flex; align-items:center; gap:12px; background:var(--bg-panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px;}
+.bucket-item.done{ opacity:0.55; text-decoration:line-through; }
+.bucket-item input[type=checkbox]{ width:20px; height:20px; accent-color:var(--accent-gold);}
+.progress-wrap{ background:rgba(0,0,0,0.25); border-radius:999px; height:10px; overflow:hidden; margin:16px 0 26px;}
+.progress-bar{ height:100%; background:linear-gradient(90deg, var(--accent-gold), var(--accent-rose)); transition:width .4s ease;}
+
+/* timeline */
+.tl{ position:relative; padding-left:26px; margin-top:20px;}
+.tl::before{ content:''; position:absolute; left:6px; top:0; bottom:0; width:2px; background:linear-gradient(var(--accent-gold), var(--accent-rose)); opacity:0.4;}
+.tl-item{ position:relative; margin-bottom:26px;}
+.tl-item::before{ content:''; position:absolute; left:-26px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--accent-gold-soft); box-shadow:0 0 10px rgba(217,164,65,0.6);}
+.tl-item .date{ font-size:11px; text-transform:uppercase; letter-spacing:0.14em; color:var(--accent-gold-soft);}
+.tl-item h3{ margin:4px 0 4px; font-size:21px;}
+.tl-item p{ margin:0; color:var(--text-muted); font-size:14px; line-height:1.6;}
+
+/* planner */
+#map{ height:380px; border-radius:14px; border:1px solid var(--line); margin-top:14px;}
+.search-row{ display:flex; gap:10px; margin-top:14px;}
+.search-row input{ flex:1; }
+.search-results{ margin-top:10px; display:flex; flex-direction:column; gap:6px; max-height:160px; overflow:auto;}
+.search-results div{ padding:8px 10px; background:rgba(0,0,0,0.2); border-radius:8px; font-size:13px; cursor:pointer; color:var(--text-muted);}
+.search-results div:hover{ color:var(--text-cream); border:1px solid var(--accent-gold); }
+.plan-list{ display:flex; flex-direction:column; gap:12px; margin-top:18px;}
+.plan-item{ background:var(--bg-panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; font-size:14px;}
+.plan-item .p-title{ color:var(--accent-gold-soft); font-family:'Cormorant Garamond',serif; font-size:19px;}
+.plan-item .p-meta{ color:var(--text-muted); font-size:12px; margin-top:4px;}
+
+/* gallery */
+.gallery-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; margin-top:20px;}
+.gallery-grid img{ width:100%; height:200px; object-fit:cover; border-radius:12px; border:1px solid var(--line); cursor:pointer; transition:transform .25s ease;}
+.gallery-grid img:hover{ transform:scale(1.03); }
+.lightbox{ position:fixed; inset:0; background:rgba(10,7,18,0.92); z-index:100; display:none; align-items:center; justify-content:center; padding:30px;}
+.lightbox.open{ display:flex; }
+.lightbox img{ max-width:90vw; max-height:85vh; border-radius:10px; box-shadow:var(--shadow);}
+.lightbox-close{ position:absolute; top:26px; right:34px; background:none; border:none; color:var(--text-cream); font-size:30px; cursor:pointer;}
+
+/* settings */
+.settings-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+@media (max-width:700px){ .settings-grid{ grid-template-columns:1fr; } }
+.note{ font-size:12px; color:var(--text-muted); margin-top:8px; line-height:1.6;}
+.save-flash{ font-size:12px; color:var(--accent-gold-soft); margin-left:10px; opacity:0; transition:opacity .3s ease;}
+.save-flash.show{ opacity:1; }
+
+footer{ position:relative; z-index:1; text-align:center; padding:36px; color:var(--text-muted); font-size:12px; letter-spacing:0.05em;}
+</style>
+</head>
+<body>
+
+<div id="intro">
+  <div class="eyebrow">A gift, not a purchase</div>
+  <div class="intro-names">
+    <span class="name foil">Md Osman Goni Khan</span>
+    <span class="intro-heart">♡</span>
+    <span class="name foil">Farzana Rahman Jerin</span>
+  </div>
+  <div class="intro-est">est. November 6, 2022</div>
+  <h1 class="foil">Welcome to Our Universe</h1>
+  <p>Letters, quotes, games, a whole shared bucket list, and a place to plan every next date — all built by hand, just for the two of us.</p>
+  <button class="btn btn-primary" onclick="closeIntro()">✦ Step inside</button>
+</div>
+
+<canvas id="stars"></canvas>
+<div class="bg-glow"></div>
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+<div class="blob blob3"></div>
+
+<nav>
+  <div class="brand" onclick="goTo('home')">✦ <span id="brandName">Our Universe</span></div>
+  <button class="nav-toggle" onclick="document.querySelector('.navlinks').classList.toggle('open')">☰</button>
+  <div class="navlinks">
+    <button data-view="home" class="active" onclick="goTo('home')">Home</button>
+    <button data-view="letters" onclick="goTo('letters')">Letters</button>
+    <button data-view="quotes" onclick="goTo('quotes')">Quotes</button>
+    <button data-view="flirt" onclick="goTo('flirt')">Flirt</button>
+    <button data-view="games" onclick="goTo('games')">Games</button>
+    <button data-view="bucket" onclick="goTo('bucket')">Bucket List</button>
+    <button data-view="timeline" onclick="goTo('timeline')">Timeline</button>
+    <button data-view="countdown" onclick="goTo('countdown')">Countdown</button>
+    <button data-view="planner" onclick="goTo('planner')">Plan a Date</button>
+    <button data-view="gallery" onclick="goTo('gallery')">Gallery</button>
+    <button data-view="settings" onclick="goTo('settings')">Settings</button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- HOME -->
+  <section id="home" class="view active">
+    <div class="hero-wrap">
+      <div class="eyebrow">A whole world, built for one person</div>
+      <h1 class="hero-title">For <em class="foil" id="heroName">You</em>, always.</h1>
+      <p class="hero-sub">Every letter, quote, game, and plan hidden in here was made with one person in mind. This little universe keeps growing — come back any time and there will be something new.</p>
+      <div class="hero-actions">
+        <button class="btn btn-primary" onclick="goTo('letters')">Read a letter</button>
+        <button class="btn btn-ghost" onclick="goTo('planner')">Plan our next date</button>
+        <button class="btn btn-ghost" onclick="goTo('games')">Play a game together</button>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><span class="num" id="daysTogether">—</span><span class="lbl">Days together</span></div>
+        <div class="stat"><span class="num" id="letterCount">0</span><span class="lbl">Letters written</span></div>
+        <div class="stat"><span class="num" id="daysToAnniv">—</span><span class="lbl">Days to anniversary</span></div>
+        <div class="stat"><span class="num" id="bucketDone">0</span><span class="lbl">Bucket list wins</span></div>
+      </div>
+      <div class="feature-row">
+        <div class="feature-card" onclick="goTo('quotes')"><span class="ico">✦</span><div class="t">Quotes</div><div class="d">A little reminder, one tap away.</div></div>
+        <div class="feature-card" onclick="goTo('flirt')"><span class="ico">😉</span><div class="t">Flirt Zone</div><div class="d">Just a little trouble.</div></div>
+        <div class="feature-card" onclick="goTo('games')"><span class="ico">🎲</span><div class="t">Games</div><div class="d">Memory match, quizzes & more.</div></div>
+        <div class="feature-card" onclick="goTo('bucket')"><span class="ico">🗺️</span><div class="t">Bucket List</div><div class="d">Everything we still want to do.</div></div>
+        <div class="feature-card" onclick="goTo('timeline')"><span class="ico">⏳</span><div class="t">Our Timeline</div><div class="d">Every milestone, in order.</div></div>
+        <div class="feature-card" onclick="goTo('gallery')"><span class="ico">🖼️</span><div class="t">Gallery</div><div class="d">Little pieces of us.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LETTERS -->
+  <section id="letters" class="view">
+    <div class="eyebrow">Love Letters</div>
+    <h2 class="section-title">Words I meant to say slowly</h2>
+    <p class="section-sub">Every letter here is real, saved, and waiting. Click one to open it as its own page — write a new one whenever you feel like it.</p>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="letter-list" id="letterList"></div>
+      </div>
+      <div class="panel">
+        <h3 style="margin-top:0;">Write a new letter</h3>
+        <form id="letterForm" onsubmit="return addLetter(event)">
+          <label>Title</label>
+          <input type="text" id="lTitle" placeholder="e.g. For a rainy Tuesday" required>
+          <label>Letter</label>
+          <textarea id="lBody" placeholder="Start writing..." required></textarea>
+          <button class="btn btn-primary" style="margin-top:16px;" type="submit">Save letter</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUOTES -->
+  <section id="quotes" class="view">
+    <div class="eyebrow">Love Quotes</div>
+    <h2 class="section-title">A little reminder</h2>
+    <p class="section-sub">Tap the star for a new one. Add your own lines below and they'll join the rotation forever.</p>
+    <div class="panel quote-stage">
+      <p class="quote-text" id="quoteText">Loading...</p>
+      <button class="btn btn-primary" style="margin-top:24px;" onclick="newQuote()">✦ Another one</button>
+    </div>
+    <div class="panel" style="margin-top:24px;">
+      <h3 style="margin-top:0;">Add your own quote</h3>
+      <form onsubmit="return addQuote(event)">
+        <input type="text" id="newQuoteInput" placeholder="Type a quote of your own..." required>
+        <button class="btn btn-ghost" style="margin-top:14px;" type="submit">Add to the rotation</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- FLIRT -->
+  <section id="flirt" class="view">
+    <div class="eyebrow">Flirt Zone</div>
+    <h2 class="section-title">Just a little trouble</h2>
+    <p class="section-sub">Purely for fun — press the button and see what shows up.</p>
+    <div class="panel flirt-card"><p class="flirt-text" id="flirtText">Tap below for a little mischief...</p></div>
+    <div style="text-align:center; margin-top:22px;"><button class="btn btn-primary" onclick="newFlirt()">😉 Surprise me</button></div>
+  </section>
+
+  <!-- GAMES -->
+  <section id="games" class="view">
+    <div class="eyebrow">Play Together</div>
+    <h2 class="section-title">Games for two</h2>
+    <p class="section-sub">Four little games to share — pass the phone back and forth, or play from your own devices whenever you both open this.</p>
+    <div class="subtabs">
+      <button class="active" data-game="memory" onclick="showGame('memory')">Memory Match</button>
+      <button data-game="wyr" onclick="showGame('wyr')">Would You Rather</button>
+      <button data-game="td" onclick="showGame('td')">Truth or Dare</button>
+      <button data-game="quiz" onclick="showGame('quiz')">Couple Quiz</button>
+    </div>
+
+    <div class="panel game-pane active" id="game-memory">
+      <h3 style="margin-top:0;">Memory Match</h3>
+      <p class="section-sub" style="margin-bottom:10px;">Find every pair before you run out of patience.</p>
+      <div class="mm-grid" id="mmGrid"></div>
+      <div class="mm-meta" id="mmMeta">Moves: 0</div>
+      <div style="text-align:center; margin-top:16px;"><button class="btn btn-ghost" onclick="startMemoryGame()">Shuffle again</button></div>
+    </div>
+
+    <div class="panel game-pane" id="game-wyr">
+      <h3 style="margin-top:0;">Would You Rather</h3>
+      <p class="section-sub" style="margin-bottom:10px;">Pick one. Answers are just for fun and get tallied below.</p>
+      <div class="wyr-options">
+        <div class="wyr-btn" id="wyrA" onclick="pickWyr('A')"></div>
+        <div class="wyr-or">or</div>
+        <div class="wyr-btn" id="wyrB" onclick="pickWyr('B')"></div>
+      </div>
+      <div style="text-align:center;"><button class="btn btn-ghost" onclick="newWyr()">New round</button></div>
+      <div class="wyr-tally" id="wyrTally"></div>
+    </div>
+
+    <div class="panel game-pane" id="game-td">
+      <h3 style="margin-top:0;">Truth or Dare</h3>
+      <p class="section-sub" style="margin-bottom:10px;">Keep it sweet, keep it fun.</p>
+      <div class="td-choice">
+        <button class="btn btn-primary" onclick="newTruthOrDare('truth')">Truth</button>
+        <button class="btn btn-ghost" onclick="newTruthOrDare('dare')">Dare</button>
+      </div>
+      <div class="flirt-card" style="padding:20px;"><p class="flirt-text" id="tdText">Choose truth or dare above.</p></div>
+    </div>
+
+    <div class="panel game-pane" id="game-quiz">
+      <h3 style="margin-top:0;">How Well Do We Know Each Other</h3>
+      <p class="section-sub" style="margin-bottom:10px;">One of you guesses, the other fills in the real answer. Then check the score together.</p>
+      <div id="quizList"></div>
+      <div style="text-align:center;"><button class="btn btn-primary" onclick="checkQuizScore()">Reveal our score</button></div>
+      <div class="score-banner" id="quizScore"></div>
+    </div>
+  </section>
+
+  <!-- BUCKET LIST -->
+  <section id="bucket" class="view">
+    <div class="eyebrow">Together, Always</div>
+    <h2 class="section-title">Our bucket list</h2>
+    <p class="section-sub">Everything we still want to do, see, eat, or try — as a couple. Check things off as we go.</p>
+    <div class="panel">
+      <div class="search-row">
+        <input type="text" id="bucketInput" placeholder="e.g. Watch the sunrise from a rooftop together">
+        <button class="btn btn-primary" onclick="addBucketItem()">Add</button>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar" id="bucketProgress" style="width:0%"></div></div>
+      <div id="bucketList"></div>
+    </div>
+  </section>
+
+  <!-- TIMELINE -->
+  <section id="timeline" class="view">
+    <div class="eyebrow">Our Story</div>
+    <h2 class="section-title">Every milestone, in order</h2>
+    <p class="section-sub">The moments that built us — add a new one any time something worth remembering happens.</p>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="tl" id="tlList"></div>
+      </div>
+      <div class="panel">
+        <h3 style="margin-top:0;">Add a milestone</h3>
+        <form onsubmit="return addTimelineItem(event)">
+          <label>Date</label>
+          <input type="date" id="tlDate" required>
+          <label>Title</label>
+          <input type="text" id="tlTitle" placeholder="e.g. Our first trip together" required>
+          <label>Note (optional)</label>
+          <textarea id="tlNote" placeholder="What made it special..."></textarea>
+          <button class="btn btn-primary" style="margin-top:16px;" type="submit">Add to our story</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- COUNTDOWN -->
+  <section id="countdown" class="view">
+    <div class="eyebrow">Counting Down</div>
+    <h2 class="section-title">The dates that matter</h2>
+    <p class="section-sub">Set these once in Settings — they'll keep ticking every time this page is open.</p>
+
+    <div class="panel count-card">
+      <h3>💍 Anniversary</h3>
+      <div class="sub" id="annivDateLabel">Not set yet</div>
+      <div class="count-grid" id="annivGrid">
+        <div class="count-box"><span class="n">–</span><span class="l">Days</span></div>
+        <div class="count-box"><span class="n">–</span><span class="l">Hours</span></div>
+        <div class="count-box"><span class="n">–</span><span class="l">Minutes</span></div>
+        <div class="count-box"><span class="n">–</span><span class="l">Seconds</span></div>
+      </div>
+    </div>
+
+    <div class="panel count-card">
+      <h3>🎂 Her Birthday</h3>
+      <div class="sub" id="bdayDateLabel">Not set yet</div>
+      <div class="count-grid" id="bdayGrid">
+        <div class="count-box"><span class="n">–</span><span class="l">Days</span></div>
+        <div class="count-box"><span class="n">–</span><span class="l">Hours</span></div>
+        <div class="count-box"><span class="n">–</span><span class="l">Minutes</span></div>
+        <div class="count-box"><span class="n">–</span><span class="l">Seconds</span></div>
+      </div>
+    </div>
+
+    <div class="panel count-card">
+      <h3>🎉 His Birthday</h3>
+      <div class="sub" id="hisBdayDateLabel">Not set yet</div>
+      <div class="count-grid" id="hisBdayGrid">
+        <div class="count-box"><span class="n">–</span><span class="l">Days</span></div>
+        <div class="count-box"><span class="n">–</span><span class="l">Hours</span></div>
+        <div class="count-box"><span class="n">–</span><span class="l">Minutes</span></div>
+        <div class="count-box"><span class="n">–</span><span class="l">Seconds</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PLANNER -->
+  <section id="planner" class="view">
+    <div class="eyebrow">Plan A Date</div>
+    <h2 class="section-title">Pick a place, pick a time</h2>
+    <p class="section-sub">Search for a restaurant, park, or spot anywhere in the world, drop a pin, choose a date and time, and send the plan over.</p>
+    <div class="grid-2">
+      <div class="panel">
+        <label style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.1em;">Search a place</label>
+        <div class="search-row">
+          <input type="text" id="placeSearch" placeholder="Try 'ramen Dhaka' or 'park near me'">
+          <button class="btn btn-ghost" onclick="searchPlace()">Search</button>
+        </div>
+        <div class="search-results" id="searchResults"></div>
+        <div id="map"></div>
+        <div class="note">Tip: you can also just click anywhere on the map to drop a pin.</div>
+      </div>
+      <div class="panel">
+        <h3 style="margin-top:0;">Propose this date</h3>
+        <form id="planForm" onsubmit="return savePlan(event)">
+          <label>Chosen place</label>
+          <input type="text" id="planPlace" placeholder="Click a search result or the map first" readonly>
+          <label>Date</label>
+          <input type="date" id="planDate" required>
+          <label>Time</label>
+          <input type="time" id="planTime" required>
+          <label>Note (optional)</label>
+          <textarea id="planNote" placeholder="Anything you'd like to add..."></textarea>
+          <button class="btn btn-primary" style="margin-top:16px;" type="submit">Send this plan 💌</button>
+        </form>
+        <div class="note" id="planEmailNote"></div>
+        <h3>Proposed dates</h3>
+        <div class="plan-list" id="planList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GALLERY -->
+  <section id="gallery" class="view">
+    <div class="eyebrow">Memories</div>
+    <h2 class="section-title">Little pieces of us</h2>
+    <p class="section-sub">Add a photo by pasting an image link below. Click any photo to view it full-size.</p>
+    <div class="panel">
+      <div class="search-row">
+        <input type="text" id="imgUrlInput" placeholder="Paste an image URL...">
+        <button class="btn btn-primary" onclick="addImage()">Add photo</button>
+      </div>
+      <div class="gallery-grid" id="galleryGrid"></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="settings" class="view">
+    <div class="eyebrow">Settings</div>
+    <h2 class="section-title">Set the details once</h2>
+    <p class="section-sub">These power the countdowns, the hero greeting, and where date plans get sent.</p>
+    <div class="panel">
+      <form onsubmit="return saveSettings(event)">
+        <div class="settings-grid">
+          <div>
+            <label>Her name</label>
+            <input type="text" id="setHerName" placeholder="e.g. Farzana">
+            <label>Together since</label>
+            <input type="date" id="setTogetherSince">
+            <label>Your birthday</label>
+            <input type="date" id="setHisBday">
+          </div>
+          <div>
+            <label>Anniversary date</label>
+            <input type="date" id="setAnniv">
+            <label>Her birthday</label>
+            <input type="date" id="setBday">
+            <label>Your email (date plans sent here)</label>
+            <input type="email" id="setEmail" placeholder="you@example.com">
+          </div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:18px;" type="submit">Save settings</button>
+        <span class="save-flash" id="saveFlash">Saved ✓</span>
+        <span class="save-flash show" id="storageStatus">Browser storage ready ✓</span>
+      </form>
+      <p class="note">Your letters, quotes, game scores, bucket list, timeline, date plans, photo links, and settings are saved automatically in this browser using localStorage. They will survive refreshes and browser restarts on this device, but they are not shared automatically with another device or another person's browser. Date plans still open your email app when you send them.</p>
+    </div>
+  </section>
+
+</main>
+
+<button class="wish-star" onclick="wishStar()" title="Wish upon a star">✦</button>
+<div class="wish-hint">tap the star ✨</div>
+
+<div id="letterReader">
+  <div class="reader-page">
+    <button class="reader-close" onclick="closeReader()">×</button>
+    <h2 id="readerTitle"></h2>
+    <div class="meta" id="readerMeta"></div>
+    <div class="reader-body" id="readerBody"></div>
+    <div class="reader-nav">
+      <button class="btn btn-ghost" onclick="readerPrev()">← Previous</button>
+      <button class="btn btn-ghost" onclick="readerNext()">Next →</button>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" onclick="closeLightbox()">×</button>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<div class="wish-modal" id="wishModal">
+  <div class="wish-modal-card">
+    <button class="reader-close" onclick="closeWishModal()">×</button>
+    <div class="eyebrow">A little wish, granted</div>
+    <p class="wish-modal-text" id="wishModalText"></p>
+  </div>
+</div>
+
+<footer>made with quiet, stubborn devotion — updated whenever there's something new to say.</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+/* ---------------- INTRO ---------------- */
+function closeIntro(){ document.getElementById('intro').classList.add('hide'); }
+
+/* ---------------- STARFIELD ---------------- */
+const canvas = document.getElementById('stars');
+const ctx = canvas.getContext('2d');
+let stars = [];
+function resizeCanvas(){
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  stars = [];
+  const count = Math.floor((canvas.width*canvas.height)/9000);
+  for(let i=0;i<count;i++){
+    stars.push({ x:Math.random()*canvas.width, y:Math.random()*canvas.height, r:Math.random()*1.4+0.3, tw:Math.random()*Math.PI*2, speed:Math.random()*0.02+0.005 });
+  }
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+let shootingStar = null;
+function maybeSpawnShootingStar(){
+  if(!shootingStar && Math.random() < 0.006){
+    shootingStar = { x: Math.random()*canvas.width*0.6, y: Math.random()*canvas.height*0.3, vx: 6+Math.random()*4, vy: 3+Math.random()*2, life: 60 };
+  }
+}
+function drawStars(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#f4ecdd';
+  stars.forEach(s=>{
+    s.tw += s.speed;
+    const alpha = 0.35 + Math.sin(s.tw)*0.35;
+    ctx.globalAlpha = Math.max(alpha,0.05);
+    ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+  maybeSpawnShootingStar();
+  if(shootingStar){
+    const s = shootingStar;
+    ctx.strokeStyle = 'rgba(244,236,221,0.8)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(s.x,s.y); ctx.lineTo(s.x - s.vx*6, s.y - s.vy*6); ctx.stroke();
+    s.x += s.vx; s.y += s.vy; s.life--;
+    if(s.life<=0) shootingStar = null;
+  }
+  requestAnimationFrame(drawStars);
+}
+drawStars();
+
+/* ---------------- LOCALSTORAGE PERSISTENCE ---------------- */
+/*
+  GitHub Pages is a static host, so this site stores its editable data in the
+  visitor's browser using localStorage. Data survives page refreshes and
+  browser restarts on the same device/browser for this website origin.
+*/
+const STORAGE_PREFIX = 'our-universe:';
+const storageMemoryFallback = {};
+
+function storageKey(key){
+  return `${STORAGE_PREFIX}${key}`;
+}
+
+function canUseLocalStorage(){
+  try{
+    const testKey = `${STORAGE_PREFIX}__test__`;
+    localStorage.setItem(testKey, '1');
+    localStorage.removeItem(testKey);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+const LOCAL_STORAGE_AVAILABLE = canUseLocalStorage();
+
+async function saveData(key, value){
+  const serialized = JSON.stringify(value);
+  try{
+    if(LOCAL_STORAGE_AVAILABLE){
+      localStorage.setItem(storageKey(key), serialized);
+      return true;
+    }
+  }catch(e){
+    console.warn(`Could not save '${key}' to localStorage.`, e);
+  }
+  // Keep the current session usable if storage is blocked or unavailable.
+  storageMemoryFallback[key] = serialized;
+  return false;
+}
+
+async function loadData(key, fallback){
+  try{
+    if(LOCAL_STORAGE_AVAILABLE){
+      const raw = localStorage.getItem(storageKey(key));
+      if(raw !== null){
+        return JSON.parse(raw);
+      }
+    }
+  }catch(e){
+    console.warn(`Could not load '${key}' from localStorage.`, e);
+  }
+
+  if(storageMemoryFallback[key] !== undefined){
+    try{
+      return JSON.parse(storageMemoryFallback[key]);
+    }catch(e){
+      console.warn(`Could not parse fallback data for '${key}'.`, e);
+    }
+  }
+
+  return fallback;
+}
+
+/* ---------------- NAV ---------------- */
+function goTo(view){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById(view).classList.add('active');
+  document.querySelectorAll('.navlinks button').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  document.querySelector('.navlinks').classList.remove('open');
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(view==='planner') setTimeout(initMap, 50);
+}
+
+/* ---------------- SETTINGS ---------------- */
+let settings = { herName:'Dr. Mrs. Khan', togetherSince:'', anniv:'2022-11-06', bday:'', hisBday:'2002-06-03', email:'' };
+async function loadSettings(){
+  settings = await loadData('settings', settings);
+  document.getElementById('setHerName').value = settings.herName||'';
+  document.getElementById('setTogetherSince').value = settings.togetherSince||'';
+  document.getElementById('setAnniv').value = settings.anniv||'';
+  document.getElementById('setBday').value = settings.bday||'';
+  document.getElementById('setHisBday').value = settings.hisBday||'';
+  document.getElementById('setEmail').value = settings.email||'';
+  applySettingsToUI();
+}
+function applySettingsToUI(){
+  const name = settings.herName || 'You';
+  document.getElementById('heroName').textContent = name;
+  document.getElementById('brandName').textContent = settings.herName ? `Our Universe, ${settings.herName}` : 'Our Universe';
+  if(settings.togetherSince){
+    const days = Math.floor((Date.now() - new Date(settings.togetherSince))/86400000);
+    document.getElementById('daysTogether').textContent = days>=0? days : '—';
+  } else { document.getElementById('daysTogether').textContent = '—'; }
+  if(settings.anniv){
+    const days = Math.ceil((new Date(settings.anniv) - Date.now())/86400000);
+    document.getElementById('daysToAnniv').textContent = days>=0? days : '—';
+  } else { document.getElementById('daysToAnniv').textContent = '—'; }
+  document.getElementById('annivDateLabel').textContent = settings.anniv? `Set for ${settings.anniv}` : 'Not set yet — add it in Settings';
+  document.getElementById('bdayDateLabel').textContent = settings.bday? `Set for ${settings.bday}` : 'Not set yet — add it in Settings';
+  document.getElementById('hisBdayDateLabel').textContent = settings.hisBday? `Set for ${settings.hisBday}` : 'Not set yet — add it in Settings';
+  document.getElementById('planEmailNote').textContent = settings.email
+    ? `Sending will open your mail app addressed to ${settings.email}.`
+    : `Add your email in Settings so plans know where to go.`;
+}
+async function saveSettings(e){
+  e.preventDefault();
+  settings = {
+    herName: document.getElementById('setHerName').value.trim(),
+    togetherSince: document.getElementById('setTogetherSince').value,
+    anniv: document.getElementById('setAnniv').value,
+    bday: document.getElementById('setBday').value,
+    hisBday: document.getElementById('setHisBday').value,
+    email: document.getElementById('setEmail').value.trim()
+  };
+  await saveData('settings', settings);
+  applySettingsToUI();
+  const flash = document.getElementById('saveFlash');
+  flash.classList.add('show');
+  setTimeout(()=>flash.classList.remove('show'), 1800);
+  return false;
+}
+
+/* ---------------- COUNTDOWNS ---------------- */
+function fillCountGrid(gridId, target){
+  const grid = document.getElementById(gridId);
+  const boxes = grid.querySelectorAll('.n');
+  if(!target){ boxes.forEach(b=>b.textContent='–'); return; }
+  let diff = new Date(target) - Date.now();
+  if(diff < 0) diff = 0;
+  const d = Math.floor(diff/86400000);
+  const h = Math.floor(diff%86400000/3600000);
+  const m = Math.floor(diff%3600000/60000);
+  const s = Math.floor(diff%60000/1000);
+  [d,h,m,s].forEach((v,i)=> boxes[i].textContent = v);
+}
+function tickCountdowns(){
+  fillCountGrid('annivGrid', settings.anniv);
+  fillCountGrid('bdayGrid', settings.bday);
+  fillCountGrid('hisBdayGrid', settings.hisBday);
+}
+setInterval(tickCountdowns, 1000);
+
+/* ---------------- LETTERS ---------------- */
+let letters = [];
+let readerIndex = 0;
+async function loadLetters(){
+  letters = await loadData('letters', [
+    { title:'Why I built this', body:'Farzana — Dr. Mrs. Khan — I wanted a place that was only ours, something I could keep adding to, one small thing at a time, for as long as we\'re together.\n\nAll of it, always,\nOsman', date:new Date().toISOString().slice(0,10) }
+  ]);
+  renderLetters();
+}
+function renderLetters(){
+  const list = document.getElementById('letterList');
+  list.innerHTML = '';
+  const ordered = letters.slice().reverse();
+  ordered.forEach((l, idx)=>{
+    const card = document.createElement('div');
+    card.className = 'letter-card';
+    card.innerHTML = `<h3>${escapeHtml(l.title)}</h3><div class="meta">${l.date}</div>`;
+    card.onclick = ()=> openReader(idx, ordered);
+    list.appendChild(card);
+  });
+  document.getElementById('letterCount').textContent = letters.length;
+}
+let readerSet = [];
+function openReader(idx, orderedList){
+  readerSet = orderedList;
+  readerIndex = idx;
+  renderReader();
+  document.getElementById('letterReader').classList.add('open');
+}
+function renderReader(){
+  const l = readerSet[readerIndex];
+  document.getElementById('readerTitle').textContent = l.title;
+  document.getElementById('readerMeta').textContent = l.date;
+  document.getElementById('readerBody').textContent = l.body;
+}
+function readerPrev(){ if(readerIndex>0){ readerIndex--; renderReader(); } }
+function readerNext(){ if(readerIndex<readerSet.length-1){ readerIndex++; renderReader(); } }
+function closeReader(){ document.getElementById('letterReader').classList.remove('open'); }
+
+async function addLetter(e){
+  e.preventDefault();
+  const title = document.getElementById('lTitle').value.trim();
+  const body = document.getElementById('lBody').value.trim();
+  if(!title || !body) return false;
+  letters.push({ title, body, date: new Date().toISOString().slice(0,10) });
+  await saveData('letters', letters);
+  renderLetters();
+  document.getElementById('letterForm').reset();
+  return false;
+}
+
+/* ---------------- QUOTES ---------------- */
+let quotes = [];
+const defaultQuotes = [
+  "You are the calm I never knew I was looking for.",
+  "Every ordinary day turns into something worth remembering, just because you're in it.",
+  "I fell for you slowly, then all at once, and I haven't stopped since.",
+  "Home isn't a place. It's the sound of your voice at the end of a long day.",
+  "You are my favorite hello and my hardest goodbye.",
+  "Some people search their whole life for what I found in you.",
+  "I don't need a reason to love you today. I just do, the same as yesterday.",
+  "With you, even the quiet moments feel like the good part of the story."
+];
+async function loadQuotes(){ quotes = await loadData('quotes', defaultQuotes); newQuote(); }
+function newQuote(){ document.getElementById('quoteText').textContent = quotes[Math.floor(Math.random()*quotes.length)]; }
+async function addQuote(e){
+  e.preventDefault();
+  const val = document.getElementById('newQuoteInput').value.trim();
+  if(!val) return false;
+  quotes.push(val);
+  await saveData('quotes', quotes);
+  document.getElementById('newQuoteInput').value = '';
+  newQuote();
+  return false;
+}
+
+/* ---------------- FLIRT ---------------- */
+const flirtLines = [
+  "Careful — that smile of yours is illegal in at least three countries.",
+  "I was going to send you something clever, but you already have my full attention.",
+  "If being irresistible were a crime, you'd be doing life without parole.",
+  "Warning: prolonged eye contact with you may cause butterflies.",
+  "You must be tired, because you've been running through my mind all day.",
+  "I'd cross a very long distance just to sit next to you and say nothing at all.",
+  "You plus me plus a lazy Sunday. That's the whole plan.",
+  "Stop being this charming, some of us are trying to function."
+];
+function newFlirt(){ document.getElementById('flirtText').textContent = flirtLines[Math.floor(Math.random()*flirtLines.length)]; }
+
+/* ---------------- WISH STAR ---------------- */
+function wishStar(){
+  const pools = [ ()=>quotes[Math.floor(Math.random()*quotes.length)], ()=>flirtLines[Math.floor(Math.random()*flirtLines.length)] ];
+  document.getElementById('wishModalText').textContent = pools[Math.floor(Math.random()*pools.length)]();
+  document.getElementById('wishModal').classList.add('open');
+  fireConfetti(70);
+}
+function closeWishModal(){ document.getElementById('wishModal').classList.remove('open'); }
+
+/* ---------------- CONFETTI ---------------- */
+const confettiCanvas = document.createElement('canvas');
+confettiCanvas.id = 'confetti';
+document.body.appendChild(confettiCanvas);
+const cctx = confettiCanvas.getContext('2d');
+function resizeConfetti(){ confettiCanvas.width = innerWidth; confettiCanvas.height = innerHeight; }
+window.addEventListener('resize', resizeConfetti);
+resizeConfetti();
+let confettiParticles = [], confettiRunning = false;
+function fireConfetti(count){
+  count = count || 60;
+  const colors = ['#d9a441','#e8c37f','#e69aa0','#f4ecdd'];
+  for(let i=0;i<count;i++){
+    confettiParticles.push({
+      x: confettiCanvas.width/2 + (Math.random()-0.5)*260,
+      y: confettiCanvas.height*0.25,
+      vx:(Math.random()-0.5)*7, vy:Math.random()*-7-2,
+      g:0.28, size:Math.random()*6+4, color:colors[Math.floor(Math.random()*colors.length)], life:110
+    });
+  }
+  if(!confettiRunning){ confettiRunning = true; runConfetti(); }
+}
+function runConfetti(){
+  cctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+  confettiParticles.forEach(p=>{
+    p.vy += p.g; p.x += p.vx; p.y += p.vy; p.life--;
+    cctx.globalAlpha = Math.max(p.life/110,0);
+    cctx.fillStyle = p.color;
+    cctx.fillRect(p.x,p.y,p.size,p.size);
+  });
+  confettiParticles = confettiParticles.filter(p=> p.life>0 && p.y < confettiCanvas.height+50);
+  if(confettiParticles.length>0){ requestAnimationFrame(runConfetti); }
+  else { confettiRunning = false; cctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height); }
+}
+
+/* ---------------- GAMES ---------------- */
+function showGame(name){
+  document.querySelectorAll('.subtabs button').forEach(b=> b.classList.toggle('active', b.dataset.game===name));
+  document.querySelectorAll('.game-pane').forEach(p=> p.classList.remove('active'));
+  document.getElementById('game-'+name).classList.add('active');
+  if(name==='memory' && !mmStarted){ startMemoryGame(); }
+  if(name==='wyr' && !document.getElementById('wyrA').textContent){ newWyr(); }
+}
+
+/* memory match */
+let mmStarted=false, mmFirst=null, mmSecond=null, mmMoves=0, mmMatched=0, mmLock=false;
+const mmIcons = ['💛','✨','🌙','💌','🌹','⭐'];
+function startMemoryGame(){
+  mmStarted = true; mmFirst=null; mmSecond=null; mmMoves=0; mmMatched=0; mmLock=false;
+  document.getElementById('mmMeta').textContent = 'Moves: 0';
+  const deck = [...mmIcons, ...mmIcons].sort(()=>Math.random()-0.5);
+  const grid = document.getElementById('mmGrid');
+  grid.innerHTML = '';
+  deck.forEach((icon, i)=>{
+    const card = document.createElement('div');
+    card.className = 'mm-card';
+    card.dataset.icon = icon; card.dataset.index = i;
+    card.textContent = '';
+    card.onclick = ()=> flipCard(card);
+    grid.appendChild(card);
+  });
+}
+function flipCard(card){
+  if(mmLock || card.classList.contains('matched') || card === mmFirst) return;
+  card.classList.add('flipped'); card.textContent = card.dataset.icon;
+  if(!mmFirst){ mmFirst = card; return; }
+  mmSecond = card; mmLock = true; mmMoves++;
+  document.getElementById('mmMeta').textContent = 'Moves: ' + mmMoves;
+  if(mmFirst.dataset.icon === mmSecond.dataset.icon){
+    mmFirst.classList.add('matched'); mmSecond.classList.add('matched');
+    mmMatched++;
+    mmFirst=null; mmSecond=null; mmLock=false;
+    if(mmMatched === mmIcons.length){ setTimeout(()=>{ document.getElementById('mmMeta').textContent = `Solved it in ${mmMoves} moves! Shuffle again to replay.`; fireConfetti(90); }, 200); }
+  } else {
+    setTimeout(()=>{
+      mmFirst.classList.remove('flipped'); mmFirst.textContent='';
+      mmSecond.classList.remove('flipped'); mmSecond.textContent='';
+      mmFirst=null; mmSecond=null; mmLock=false;
+    }, 700);
+  }
+}
+
+/* would you rather */
+const wyrPairs = [
+  ["a quiet night in with home-cooked food","a spontaneous night out somewhere new"],
+  ["slow mornings together","late night talks under the stars"],
+  ["a surprise trip with no plan","a perfectly planned trip, every detail set"],
+  ["always getting good morning texts","always getting good night calls"],
+  ["cooking together, badly","ordering in and watching a movie"],
+  ["a handwritten letter once a year","a small surprise gift every month"],
+  ["exploring a new city together","staying in and doing nothing together"],
+  ["dancing badly in the kitchen","stargazing in total silence"]
+];
+let wyrCurrent = null, wyrTally = { A:0, B:0 };
+async function loadWyr(){ wyrTally = await loadData('wyrTally', { A:0, B:0 }); }
+function newWyr(){
+  wyrCurrent = wyrPairs[Math.floor(Math.random()*wyrPairs.length)];
+  document.getElementById('wyrA').textContent = wyrCurrent[0];
+  document.getElementById('wyrB').textContent = wyrCurrent[1];
+  renderWyrTally();
+}
+async function pickWyr(which){
+  wyrTally[which] = (wyrTally[which]||0) + 1;
+  await saveData('wyrTally', wyrTally);
+  renderWyrTally();
+}
+function renderWyrTally(){
+  document.getElementById('wyrTally').textContent = `Chosen so far — Option A: ${wyrTally.A||0} · Option B: ${wyrTally.B||0}`;
+}
+
+/* truth or dare */
+const truths = [
+  "What's a small thing I do that makes you feel loved?",
+  "What's your favorite memory of us so far?",
+  "What's one thing you'd love for us to try together this year?",
+  "When did you know you wanted to be with me long-term?",
+  "What's something about me you didn't expect to fall for?"
+];
+const dares = [
+  "Send the sappiest text you can think of, right now.",
+  "Give three genuine compliments in a row.",
+  "Plan tomorrow's breakfast together, right now.",
+  "Recreate our first photo together.",
+  "Write a two-line poem about today."
+];
+function newTruthOrDare(type){
+  const pool = type==='truth' ? truths : dares;
+  document.getElementById('tdText').textContent = pool[Math.floor(Math.random()*pool.length)];
+}
+
+/* couple quiz */
+let quiz = [];
+const defaultQuiz = [
+  { q:"Her favorite comfort food", hisGuess:'', herAnswer:'' },
+  { q:"The place she'd love to travel to most", hisGuess:'', herAnswer:'' },
+  { q:"Her favorite way to spend a lazy weekend", hisGuess:'', herAnswer:'' },
+  { q:"A small thing that always makes her smile", hisGuess:'', herAnswer:'' }
+];
+async function loadQuiz(){
+  quiz = await loadData('quiz', defaultQuiz);
+  renderQuiz();
+}
+function renderQuiz(){
+  const wrap = document.getElementById('quizList');
+  wrap.innerHTML = '';
+  quiz.forEach((item, i)=>{
+    const div = document.createElement('div');
+    div.className = 'quiz-item';
+    div.innerHTML = `<div class="q">${escapeHtml(item.q)}</div>
+      <div class="quiz-row">
+        <input type="text" placeholder="His guess" value="${escapeHtml(item.hisGuess||'')}" onchange="updateQuiz(${i},'hisGuess',this.value)">
+        <input type="text" placeholder="Her real answer" value="${escapeHtml(item.herAnswer||'')}" onchange="updateQuiz(${i},'herAnswer',this.value)">
+      </div>`;
+    wrap.appendChild(div);
+  });
+}
+async function updateQuiz(i, field, val){
+  quiz[i][field] = val;
+  await saveData('quiz', quiz);
+}
+function checkQuizScore(){
+  let score = 0;
+  quiz.forEach(item=>{
+    if(item.hisGuess && item.herAnswer && item.hisGuess.trim().toLowerCase() === item.herAnswer.trim().toLowerCase()) score++;
+  });
+  document.getElementById('quizScore').textContent = `${score} out of ${quiz.length} matched — ${'💛'.repeat(Math.max(score,1))}`;
+  if(score === quiz.length && quiz.length>0) fireConfetti(90);
+}
+
+/* ---------------- BUCKET LIST ---------------- */
+let bucket = [];
+const defaultBucket = [
+  { text:'Watch a sunrise together', done:false },
+  { text:'Take a trip with absolutely no plan', done:false },
+  { text:'Cook an entire meal together from scratch', done:false }
+];
+async function loadBucket(){ bucket = await loadData('bucket', defaultBucket); renderBucket(); }
+function renderBucket(){
+  const wrap = document.getElementById('bucketList');
+  wrap.innerHTML = '';
+  bucket.forEach((item, i)=>{
+    const div = document.createElement('div');
+    div.className = 'bucket-item' + (item.done ? ' done' : '');
+    div.innerHTML = `<input type="checkbox" ${item.done?'checked':''} onchange="toggleBucket(${i})"><span>${escapeHtml(item.text)}</span>`;
+    wrap.appendChild(div);
+  });
+  const done = bucket.filter(b=>b.done).length;
+  const pct = bucket.length ? Math.round((done/bucket.length)*100) : 0;
+  document.getElementById('bucketProgress').style.width = pct + '%';
+  document.getElementById('bucketDone').textContent = done;
+}
+async function addBucketItem(){
+  const input = document.getElementById('bucketInput');
+  const val = input.value.trim();
+  if(!val) return;
+  bucket.push({ text:val, done:false });
+  await saveData('bucket', bucket);
+  input.value = '';
+  renderBucket();
+}
+async function toggleBucket(i){
+  bucket[i].done = !bucket[i].done;
+  await saveData('bucket', bucket);
+  renderBucket();
+  if(bucket[i].done) fireConfetti(50);
+}
+
+/* ---------------- TIMELINE ---------------- */
+let timeline = [];
+async function loadTimeline(){
+  timeline = await loadData('timeline', []);
+  renderTimeline();
+}
+function renderTimeline(){
+  const wrap = document.getElementById('tlList');
+  wrap.innerHTML = '';
+  const sorted = timeline.slice().sort((a,b)=> new Date(a.date) - new Date(b.date));
+  if(!sorted.length){ wrap.innerHTML = '<p class="note">No milestones added yet — add the first one.</p>'; return; }
+  sorted.forEach(item=>{
+    const div = document.createElement('div');
+    div.className = 'tl-item';
+    div.innerHTML = `<div class="date">${item.date}</div><h3>${escapeHtml(item.title)}</h3>${item.note? `<p>${escapeHtml(item.note)}</p>`:''}`;
+    wrap.appendChild(div);
+  });
+}
+async function addTimelineItem(e){
+  e.preventDefault();
+  const date = document.getElementById('tlDate').value;
+  const title = document.getElementById('tlTitle').value.trim();
+  const note = document.getElementById('tlNote').value.trim();
+  if(!date || !title) return false;
+  timeline.push({ date, title, note });
+  await saveData('timeline', timeline);
+  renderTimeline();
+  e.target.reset();
+  return false;
+}
+
+/* ---------------- GALLERY ---------------- */
+let images = [];
+const defaultImages = [
+  "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=600&q=80",
+  "https://images.unsplash.com/photo-1465101162946-4377e57745c3?w=600&q=80",
+  "https://images.unsplash.com/photo-1470753937643-efeb931202a9?w=600&q=80"
+];
+async function loadImages(){ images = await loadData('images', defaultImages); renderGallery(); }
+function renderGallery(){
+  const grid = document.getElementById('galleryGrid');
+  grid.innerHTML = '';
+  images.forEach(src=>{
+    const img = document.createElement('img');
+    img.src = src; img.onclick = ()=> openLightbox(src);
+    grid.appendChild(img);
+  });
+}
+async function addImage(){
+  const input = document.getElementById('imgUrlInput');
+  const val = input.value.trim();
+  if(!val) return;
+  images.push(val);
+  await saveData('images', images);
+  input.value = '';
+  renderGallery();
+}
+function openLightbox(src){ document.getElementById('lightboxImg').src = src; document.getElementById('lightbox').classList.add('open'); }
+function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
+
+/* ---------------- MAP / PLANNER ---------------- */
+let map, marker, chosenLatLng=null, chosenLabel='';
+function initMap(){
+  if(map) { map.invalidateSize(); return; }
+  map = L.map('map', { attributionControl:false }).setView([23.8103, 90.4125], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
+  map.on('click', function(e){ setChosen(e.latlng.lat, e.latlng.lng, `Pinned location (${e.latlng.lat.toFixed(3)}, ${e.latlng.lng.toFixed(3)})`); });
+}
+function setChosen(lat,lng,label){
+  chosenLatLng = {lat,lng}; chosenLabel = label;
+  if(marker) map.removeLayer(marker);
+  marker = L.marker([lat,lng]).addTo(map);
+  map.setView([lat,lng], 14);
+  document.getElementById('planPlace').value = label;
+}
+async function searchPlace(){
+  const q = document.getElementById('placeSearch').value.trim();
+  const resultsBox = document.getElementById('searchResults');
+  if(!q) return;
+  resultsBox.innerHTML = '<div>Searching...</div>';
+  try{
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=6`);
+    const data = await res.json();
+    resultsBox.innerHTML = '';
+    if(!data.length){ resultsBox.innerHTML = '<div>No results — try clicking directly on the map instead.</div>'; return; }
+    data.forEach(place=>{
+      const div = document.createElement('div');
+      div.textContent = place.display_name;
+      div.onclick = ()=> setChosen(parseFloat(place.lat), parseFloat(place.lon), place.display_name);
+      resultsBox.appendChild(div);
+    });
+  }catch(err){ resultsBox.innerHTML = '<div>Search unavailable right now — click directly on the map to drop a pin instead.</div>'; }
+}
+let plans = [];
+async function loadPlans(){ plans = await loadData('plans', []); renderPlans(); }
+function renderPlans(){
+  const list = document.getElementById('planList');
+  list.innerHTML = '';
+  plans.slice().reverse().forEach(p=>{
+    const div = document.createElement('div');
+    div.className = 'plan-item';
+    div.innerHTML = `<div class="p-title">${escapeHtml(p.place)}</div><div class="p-meta">${p.date} at ${p.time}${p.note? ' — '+escapeHtml(p.note):''}</div>`;
+    list.appendChild(div);
+  });
+}
+async function savePlan(e){
+  e.preventDefault();
+  const place = document.getElementById('planPlace').value || (chosenLabel || 'Chosen spot');
+  const date = document.getElementById('planDate').value;
+  const time = document.getElementById('planTime').value;
+  const note = document.getElementById('planNote').value.trim();
+  if(!date || !time){ return false; }
+  plans.push({ place, date, time, note });
+  await saveData('plans', plans);
+  renderPlans();
+  const subject = encodeURIComponent(`Date proposal: ${place}`);
+  const body = encodeURIComponent(`Place: ${place}\nDate: ${date}\nTime: ${time}\nNote: ${note || '(none)'}\n\nSent from Our Universe.`);
+  window.location.href = `mailto:${settings.email||''}?subject=${subject}&body=${body}`;
+  document.getElementById('planForm').reset();
+  document.getElementById('planPlace').value = '';
+  return false;
+}
+
+/* ---------------- UTIL ---------------- */
+function escapeHtml(str){ const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+/* ---------------- INIT ---------------- */
+(async function init(){
+  const storageStatus = document.getElementById('storageStatus');
+  if(storageStatus){
+    if(LOCAL_STORAGE_AVAILABLE){
+      storageStatus.textContent = 'Browser storage ready ✓';
+    }else{
+      storageStatus.textContent = 'Local storage unavailable — session-only mode';
+      storageStatus.classList.add('show');
+    }
+  }
+  await loadSettings();
+  await loadLetters();
+  await loadQuotes();
+  await loadWyr();
+  await loadQuiz();
+  await loadBucket();
+  await loadTimeline();
+  await loadImages();
+  await loadPlans();
+  tickCountdowns();
+  newFlirt();
+  newWyr();
+})();
+</script>
+</body>
+</html>
