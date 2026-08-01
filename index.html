@@ -235,6 +235,18 @@ form input:focus, form textarea:focus, form select:focus{ outline:2px solid var(
 .count-card{ margin-bottom:26px; }
 .count-card h3{ margin:0 0 2px; font-size:24px; color:var(--text-cream);}
 .count-card .sub{ font-size:13px; color:var(--text-muted);}
+.special-gift-panel{ position:relative; overflow:hidden; text-align:center; margin-top:8px; background:radial-gradient(circle at top, rgba(230,154,160,0.14), transparent 46%), linear-gradient(160deg, var(--bg-panel), var(--bg-panel-2));}
+.special-gift-panel::before{ content:'✦'; position:absolute; top:-35px; left:50%; transform:translateX(-50%); font-size:140px; color:rgba(217,164,65,0.05); pointer-events:none;}
+.special-gift-panel.is-today{ border-color:rgba(232,195,127,0.7); box-shadow:0 24px 80px rgba(217,164,65,0.18);}
+.gift-ribbon{ display:inline-block; padding:7px 14px; border-radius:999px; border:1px solid var(--line); color:var(--accent-gold-soft); font-size:11px; text-transform:uppercase; letter-spacing:0.16em; margin-bottom:16px;}
+.gift-icon{ font-size:54px; line-height:1; margin:2px 0 12px; filter:drop-shadow(0 10px 22px rgba(217,164,65,0.22));}
+.special-gift-panel h3{ margin:0 0 8px; font-family:'Cormorant Garamond',serif; font-size:30px; color:var(--accent-gold-soft);}
+.special-gift-panel p{ max-width:650px; margin:0 auto; color:var(--text-muted); line-height:1.75; font-size:14px;}
+.gift-meta{ margin-top:14px; font-size:12px; color:var(--text-muted);}
+.gift-button:disabled{ opacity:0.48; cursor:not-allowed; transform:none !important; box-shadow:none;}
+#specialGiftModal .wish-modal-card{ max-width:560px;}
+.special-gift-message{ font-family:'Cormorant Garamond',serif; font-size:23px; line-height:1.7; color:var(--text-cream); white-space:pre-wrap; margin:8px 0 0;}
+.special-gift-signoff{ margin-top:20px; color:var(--accent-gold-soft); font-family:'Cormorant Garamond',serif; font-size:20px; font-style:italic;}
 
 /* bucket list */
 .bucket-item{ display:flex; align-items:center; gap:12px; background:var(--bg-panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px;}
@@ -529,6 +541,14 @@ footer{ position:relative; z-index:1; text-align:center; padding:36px; color:var
         <div class="count-box"><span class="n">–</span><span class="l">Seconds</span></div>
       </div>
     </div>
+    <div class="panel special-gift-panel" id="specialGiftPanel">
+      <div class="gift-ribbon" id="giftRibbon">✦ A special gift for you</div>
+      <div class="gift-icon" id="giftIcon">🎁</div>
+      <h3 id="giftTitle">Your next special day is on the way</h3>
+      <p id="giftText">Set your real birthday and anniversary dates in Settings. The site will automatically count down to the next occurrence every year.</p>
+      <div class="gift-meta" id="giftMeta"></div>
+      <button class="btn btn-primary gift-button" id="giftButton" onclick="openSpecialGift()" disabled>🎁 Your gift is waiting</button>
+    </div>
   </section>
 
   <!-- PLANNER -->
@@ -610,7 +630,7 @@ footer{ position:relative; z-index:1; text-align:center; padding:36px; color:var
         <span class="save-flash" id="saveFlash">Saved ✓</span>
         <span class="save-flash show" id="storageStatus">Browser storage ready ✓</span>
       </form>
-      <p class="note">Your letters, quotes, game scores, bucket list, timeline, date plans, photo links, and settings are saved automatically in this browser using localStorage. They will survive refreshes and browser restarts on this device, but they are not shared automatically with another device or another person's browser. Date plans still open your email app when you send them.</p>
+      <p class="note">Your letters, quotes, game scores, bucket list, timeline, date plans, photo links, and settings are saved automatically in this browser using localStorage. For birthdays and anniversaries, enter the real date once; the year is used to calculate how many years you've been together, while the countdown automatically rolls forward to the next occurrence every year. On the special day, a gift unlocks here in the Countdown section.</p>
     </div>
   </section>
 
@@ -642,6 +662,17 @@ footer{ position:relative; z-index:1; text-align:center; padding:36px; color:var
     <button class="reader-close" onclick="closeWishModal()">×</button>
     <div class="eyebrow">A little wish, granted</div>
     <p class="wish-modal-text" id="wishModalText"></p>
+  </div>
+</div>
+
+<div class="wish-modal" id="specialGiftModal">
+  <div class="wish-modal-card">
+    <button class="reader-close" onclick="closeSpecialGift()">×</button>
+    <div class="gift-icon" id="specialGiftModalIcon">🎁</div>
+    <div class="eyebrow" id="specialGiftModalEyebrow">A gift, just for today</div>
+    <h2 id="specialGiftModalTitle" class="foil" style="font-size:38px; margin:0 0 10px;">A special day</h2>
+    <p class="special-gift-message" id="specialGiftModalMessage"></p>
+    <div class="special-gift-signoff" id="specialGiftModalSignoff">With all my love, always.</div>
   </div>
 </div>
 
@@ -788,13 +819,30 @@ function applySettingsToUI(){
     const days = Math.floor((Date.now() - new Date(settings.togetherSince))/86400000);
     document.getElementById('daysTogether').textContent = days>=0? days : '—';
   } else { document.getElementById('daysTogether').textContent = '—'; }
-  if(settings.anniv){
-    const days = Math.ceil((new Date(settings.anniv) - Date.now())/86400000);
-    document.getElementById('daysToAnniv').textContent = days>=0? days : '—';
-  } else { document.getElementById('daysToAnniv').textContent = '—'; }
-  document.getElementById('annivDateLabel').textContent = settings.anniv? `Set for ${settings.anniv}` : 'Not set yet — add it in Settings';
-  document.getElementById('bdayDateLabel').textContent = settings.bday? `Set for ${settings.bday}` : 'Not set yet — add it in Settings';
-  document.getElementById('hisBdayDateLabel').textContent = settings.hisBday? `Set for ${settings.hisBday}` : 'Not set yet — add it in Settings';
+  const now = new Date();
+  const annivTarget = getNextAnnualOccurrence(settings.anniv, now);
+  const bdayTarget = getNextAnnualOccurrence(settings.bday, now);
+  const hisBdayTarget = getNextAnnualOccurrence(settings.hisBday, now);
+
+  if(annivTarget){
+    const diff = Math.max(0, annivTarget.getTime() - now.getTime());
+    document.getElementById('daysToAnniv').textContent = Math.ceil(diff/86400000);
+    const years = getCompletedYearsSince(settings.anniv, annivTarget);
+    document.getElementById('annivDateLabel').textContent = isAnnualEventToday(settings.anniv, now)
+      ? `Today 🎉 · ${ordinal(years || 0)} anniversary`
+      : `Next: ${formatDate(annivTarget)} · ${ordinal((years || 0) + 1)} anniversary`;
+  } else {
+    document.getElementById('daysToAnniv').textContent = '—';
+    document.getElementById('annivDateLabel').textContent = 'Not set yet — add it in Settings';
+  }
+
+  document.getElementById('bdayDateLabel').textContent = settings.bday
+    ? (isAnnualEventToday(settings.bday, now) ? 'Today 🎂 · Happy Birthday!' : `Next: ${formatDate(bdayTarget)}`)
+    : 'Not set yet — add it in Settings';
+  document.getElementById('hisBdayDateLabel').textContent = settings.hisBday
+    ? (isAnnualEventToday(settings.hisBday, now) ? 'Today 🎉 · Happy Birthday!' : `Next: ${formatDate(hisBdayTarget)}`)
+    : 'Not set yet — add it in Settings';
+  renderSpecialGift();
   document.getElementById('planEmailNote').textContent = settings.email
     ? `Sending will open your mail app addressed to ${settings.email}.`
     : `Add your email in Settings so plans know where to go.`;
@@ -817,23 +865,191 @@ async function saveSettings(e){
   return false;
 }
 
-/* ---------------- COUNTDOWNS ---------------- */
-function fillCountGrid(gridId, target){
+/* ---------------- RECURRING COUNTDOWNS & SPECIAL GIFTS ---------------- */
+function isLeapYear(year){
+  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+}
+function annualDateForYear(dateString, year){
+  if(!dateString) return null;
+  const parts = dateString.split('-').map(Number);
+  if(parts.length < 3 || !parts[1] || !parts[2]) return null;
+  const month = parts[1] - 1;
+  let day = parts[2];
+  if(month === 1 && day === 29 && !isLeapYear(year)) day = 28;
+  return new Date(year, month, day, 0, 0, 0, 0);
+}
+function getNextAnnualOccurrence(dateString, now = new Date()){
+  const thisYear = annualDateForYear(dateString, now.getFullYear());
+  if(!thisYear) return null;
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  if(thisYear.getTime() >= todayStart.getTime()) return thisYear;
+  return annualDateForYear(dateString, now.getFullYear() + 1);
+}
+function isAnnualEventToday(dateString, now = new Date()){
+  if(!dateString) return false;
+  const parts = dateString.split('-').map(Number);
+  if(parts.length < 3 || !parts[1] || !parts[2]) return false;
+  let month = parts[1] - 1;
+  let day = parts[2];
+  if(month === 1 && day === 29 && !isLeapYear(now.getFullYear())) day = 28;
+  return now.getMonth() === month && now.getDate() === day;
+}
+function formatDate(date){
+  return date.toLocaleDateString(undefined, { month:'long', day:'numeric', year:'numeric' });
+}
+function getCompletedYearsSince(dateString, now = new Date()){
+  if(!dateString) return null;
+  const parts = dateString.split('-').map(Number);
+  if(parts.length < 3 || !parts[0]) return null;
+  let years = now.getFullYear() - parts[0];
+  const annual = annualDateForYear(dateString, now.getFullYear());
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  if(annual && annual.getTime() > todayStart.getTime()) years--;
+  return Math.max(0, years);
+}
+function ordinal(n){
+  const mod100 = n % 100;
+  if(mod100 >= 11 && mod100 <= 13) return `${n}th`;
+  switch(n % 10){
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
+}
+function fillCountGrid(gridId, dateString){
   const grid = document.getElementById(gridId);
   const boxes = grid.querySelectorAll('.n');
+  const target = getNextAnnualOccurrence(dateString);
   if(!target){ boxes.forEach(b=>b.textContent='–'); return; }
-  let diff = new Date(target) - Date.now();
+  let diff = target.getTime() - Date.now();
   if(diff < 0) diff = 0;
   const d = Math.floor(diff/86400000);
   const h = Math.floor(diff%86400000/3600000);
   const m = Math.floor(diff%3600000/60000);
-  const s = Math.floor(diff%60000/1000);
-  [d,h,m,s].forEach((v,i)=> boxes[i].textContent = v);
+  const sec = Math.floor(diff%60000/1000);
+  [d,h,m,sec].forEach((v,i)=> boxes[i].textContent = v);
 }
+function getTodaySpecialOccasions(now = new Date()){
+  const events = [];
+  if(settings.anniv && isAnnualEventToday(settings.anniv, now)) events.push({ type:'anniversary', date:settings.anniv });
+  if(settings.bday && isAnnualEventToday(settings.bday, now)) events.push({ type:'herBirthday', date:settings.bday });
+  if(settings.hisBday && isAnnualEventToday(settings.hisBday, now)) events.push({ type:'hisBirthday', date:settings.hisBday });
+  return events;
+}
+function getNextCelebration(now = new Date()){
+  const candidates = [
+    { type:'anniversary', date:settings.anniv },
+    { type:'herBirthday', date:settings.bday },
+    { type:'hisBirthday', date:settings.hisBday }
+  ].filter(item=>item.date).map(item=>({ ...item, target:getNextAnnualOccurrence(item.date, now) })).filter(item=>item.target);
+  candidates.sort((a,b)=>a.target.getTime()-b.target.getTime());
+  return candidates[0] || null;
+}
+function renderSpecialGift(){
+  const panel = document.getElementById('specialGiftPanel');
+  const icon = document.getElementById('giftIcon');
+  const ribbon = document.getElementById('giftRibbon');
+  const title = document.getElementById('giftTitle');
+  const text = document.getElementById('giftText');
+  const meta = document.getElementById('giftMeta');
+  const button = document.getElementById('giftButton');
+  const todayEvents = getTodaySpecialOccasions();
+  panel.classList.toggle('is-today', todayEvents.length > 0);
+
+  if(todayEvents.length){
+    const labels = [];
+    if(todayEvents.some(e=>e.type==='anniversary')) labels.push('Anniversary');
+    if(todayEvents.some(e=>e.type==='herBirthday')) labels.push(`${settings.herName || 'Her'}'s Birthday`);
+    if(todayEvents.some(e=>e.type==='hisBirthday')) labels.push('His Birthday');
+    ribbon.textContent = '✦ Today is yours';
+    icon.textContent = todayEvents.some(e=>e.type==='anniversary') ? '💍' : '🎂';
+    title.textContent = labels.length > 1 ? 'Two reasons to celebrate today' : `${labels[0]} is here 💛`;
+    text.textContent = 'This day is officially special in Our Universe. Your little digital gift is unlocked — open it and let the celebration begin.';
+    meta.textContent = 'The gift is yours to open as many times as you like today.';
+    button.disabled = false;
+    button.textContent = '🎁 Open your special gift';
+    return;
+  }
+
+  const next = getNextCelebration();
+  ribbon.textContent = '✦ A special gift is waiting';
+  icon.textContent = '🎁';
+  button.disabled = true;
+  button.textContent = '🎁 Locked until the special day';
+  if(!next){
+    title.textContent = 'Add your special dates';
+    text.textContent = 'Set your birthday and anniversary dates in Settings. Once saved, each event will automatically repeat every year.';
+    meta.textContent = '';
+    return;
+  }
+  const nextLabel = next.type==='anniversary' ? 'your next anniversary' : next.type==='herBirthday' ? `${settings.herName || 'her'}'s next birthday` : 'your next birthday';
+  title.textContent = `${nextLabel.charAt(0).toUpperCase()+nextLabel.slice(1)} is coming`;
+  text.textContent = 'The countdown resets itself every year, and the gift unlocks automatically on the exact special day.';
+  const years = next.type==='anniversary' ? getCompletedYearsSince(settings.anniv, next.target) : null;
+  meta.textContent = years !== null ? `Next: ${formatDate(next.target)} · You will celebrate ${ordinal(years + 1)} anniversary` : `Next: ${formatDate(next.target)}`;
+}
+function getSpecialGiftContent(){
+  const todayEvents = getTodaySpecialOccasions();
+  const herName = settings.herName || 'Farzana';
+  const gifts = [];
+  if(todayEvents.some(e=>e.type==='anniversary')){
+    const years = getCompletedYearsSince(settings.anniv, new Date()) || 0;
+    gifts.push({
+      icon:'💍',
+      eyebrow:'Our love, another year deeper',
+      title:`Happy ${ordinal(years)} Anniversary, Osman & ${herName}!`,
+      message:`Another year of choosing each other. Another year of memories, ordinary days that became special, and a story that is still being written.\n\nToday's gift is a promise: no matter how many years pass, I will keep making room for you in every version of my future.`,
+      signoff:'Still you. Still me. Still us. — Osman'
+    });
+  }
+  if(todayEvents.some(e=>e.type==='herBirthday')){
+    gifts.push({
+      icon:'🎂',
+      eyebrow:'A birthday wish made just for you',
+      title:`Happy Birthday, ${herName}!`,
+      message:`Today the whole universe gets a little brighter because it gets to celebrate you.\n\nYour gift is a reminder that you are deeply loved, endlessly appreciated, and always worth celebrating — not just today, but on every ordinary day too.`,
+      signoff:'May this year be gentle, joyful, and full of us. — Osman'
+    });
+  }
+  if(todayEvents.some(e=>e.type==='hisBirthday')){
+    gifts.push({
+      icon:'🎉',
+      eyebrow:'A birthday wish from our little universe',
+      title:'Happy Birthday, Osman!',
+      message:`This is your day — and somehow the greatest gift in it is still the life you are building with the person you love.\n\nMay the year ahead bring you more peace, more laughter, more adventures, and many more memories worth keeping here.`,
+      signoff:`With love, ${herName}.`
+    });
+  }
+  return gifts;
+}
+function openSpecialGift(){
+  const gifts = getSpecialGiftContent();
+  if(!gifts.length) return;
+  const gift = gifts[0];
+  document.getElementById('specialGiftModalIcon').textContent = gift.icon;
+  document.getElementById('specialGiftModalEyebrow').textContent = gift.eyebrow;
+  document.getElementById('specialGiftModalTitle').textContent = gift.title;
+  document.getElementById('specialGiftModalMessage').textContent = gift.message;
+  document.getElementById('specialGiftModalSignoff').textContent = gifts.length > 1 ? `${gift.signoff}\n\nP.S. There is another reason to celebrate today too.` : gift.signoff;
+  document.getElementById('specialGiftModal').classList.add('open');
+  fireConfetti(120);
+}
+function closeSpecialGift(){ document.getElementById('specialGiftModal').classList.remove('open'); }
 function tickCountdowns(){
   fillCountGrid('annivGrid', settings.anniv);
   fillCountGrid('bdayGrid', settings.bday);
   fillCountGrid('hisBdayGrid', settings.hisBday);
+
+  const annivTarget = getNextAnnualOccurrence(settings.anniv);
+  if(annivTarget){
+    const diff = Math.max(0, annivTarget.getTime() - Date.now());
+    document.getElementById('daysToAnniv').textContent = Math.ceil(diff/86400000);
+  }else{
+    document.getElementById('daysToAnniv').textContent = '—';
+  }
+
+  renderSpecialGift();
 }
 setInterval(tickCountdowns, 1000);
 
